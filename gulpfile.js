@@ -2,7 +2,10 @@ const gulp = require('gulp'),
     runSequence = require('run-sequence'),
     del = require('del'),
     ts = require('gulp-typescript'),
+    path = require('path'),
+    electron = require('gulp-awesome-electron'),
     tsConfig = ts.createProject('./tsconfig.json'),
+    symdest = require('gulp-symdest'),
     inject = require('gulp-inject');
 
 let config = {
@@ -15,11 +18,16 @@ let config = {
                 './dist/vendor/system.js',
                 './dist/scripts/system.config.js',
     ],
+    cleanupLocations: [
+        'dist/**/*',
+        'build/**/*'
+    ],
     sources: {
         htmlFiles: 'src/index.html',
         appFiles: 'src/**/*.ts',
         appTemplates: ['src/**/*.html', '!src/index.html'],
-        systemjsconfig: 'src/system.config.js'
+        systemjsconfig: 'src/system.config.js',
+        electronBits: 'electron/**/*'
     },
     dependencies: {
         scripts: [
@@ -41,8 +49,21 @@ let config = {
         app: 'dist/app',
         styles: 'dist/styles',
         vendor: 'dist/vendor',
-        scripts: 'dist/scripts'
+        scripts: 'dist/scripts',
+        appFolder: 'app-package'
+
     }
+};
+
+let buildElectronAppFor = (platform, outputfolder) =>{
+return gulp.src(path.join(config.dist.appFolder, '**', '*'))
+                .pipe(electron({
+                    version: '1.2.5',
+                    platform: platform,
+                    arch: 'x64',
+                    companyName: 'Thinktecture AG'
+                }))
+                .pipe(symdest(path.join(`build/${outputfolder}`)));
 };
 
 gulp.task('[private]:copy-ng2', () =>{
@@ -60,9 +81,24 @@ gulp.task('[private]:copy-deps', ()=>{
         .pipe(gulp.dest(config.dist.vendor));
 });
 
+gulp.task('[private]:build-all-apps', ()=>{
+    buildElectronAppFor('win32', 'win');
+    buildElectronAppFor('darwin', 'osx');
+    buildElectronAppFor('linux', 'linux');
+});
 gulp.task('[private]:copy-systemjsconfig', () =>{
     return gulp.src(config.sources.systemjsconfig)
         .pipe(gulp.dest(config.dist.scripts));
+});
+
+gulp.task('[private]:generate-electron-output', () =>{
+    return gulp.src([
+            path.join(config.dist.root, '**/*'),
+            config.sources.electronBits
+        ])
+        .pipe(gulp.dest(config.dist.appFolder));
+
+        
 });
 
 gulp.task('[private]:copy-styles', () =>{
@@ -76,10 +112,10 @@ gulp.task('[private]:copy-app-templates', () =>{
 });
 
 gulp.task('clean', ()=>{
-    return del('dist/**/*', {force:true});
+    return del(config.cleanupLocations, {force:true});
 });
 
-gulp.task('build-app', () =>{
+gulp.task('[private]:build-angular2-app', () =>{
      return gulp.src(config.sources.appFiles)
                 .pipe(ts(tsConfig))
                 .pipe(gulp.dest(config.dist.app));
@@ -91,19 +127,26 @@ gulp.task('[private]:build-html', () =>{
     return gulp.src(config.sources.htmlFiles)
         .pipe(inject(injectables, {ignorePath: 'dist', addRootSlash: false}))
         .pipe(gulp.dest(config.dist.root));
+});
 
+gulp.task('[private]:after-build-cleanup', ()=>{
+    return del(config.dist.appFolder, {force:true});
 });
 
 gulp.task('default', (done)=>{
     return runSequence(
         'clean',
-        'build-app',
-        '[private]:copy-systemjsconfig',
-        '[private]:copy-ng2',
-        '[private]:copy-deps',
-        '[private]:copy-rxjs',
-        '[private]:copy-styles',
-        '[private]:copy-app-templates',
-        '[private]:build-html',
+        [
+            '[private]:build-angular2-app',
+            '[private]:copy-systemjsconfig',
+            '[private]:copy-ng2',
+            '[private]:copy-deps',
+            '[private]:copy-rxjs',
+            '[private]:copy-styles',
+            '[private]:copy-app-templates'],
+            '[private]:build-html',
+            '[private]:generate-electron-output',
+            '[private]:build-all-apps',
+            '[private]:after-build-cleanup'
         done);
 });
