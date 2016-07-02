@@ -20,14 +20,15 @@ let config = {
     ],
     cleanupLocations: [
         'dist/**/*',
-        'build/**/*'
+        'build/**/*',
+        'app-package/**/*'
     ],
     sources: {
         htmlFiles: 'src/index.html',
         appFiles: 'src/**/*.ts',
         appTemplates: ['src/**/*.html', '!src/index.html'],
         systemjsconfig: 'src/system.config.js',
-        electronBits: 'electron/**/*'
+        electronBits: './electron/**/*'
     },
     dependencies: {
         scripts: [
@@ -56,14 +57,17 @@ let config = {
 };
 
 let buildElectronAppFor = (platform, outputfolder) =>{
-return gulp.src(path.join(config.dist.appFolder, '**', '*'))
+return new Promise((ok,nok)=>{
+    gulp.src(path.join(config.dist.appFolder, '**', '*'))
                 .pipe(electron({
                     version: '1.2.5',
                     platform: platform,
                     arch: 'x64',
                     companyName: 'Thinktecture AG'
                 }))
-                .pipe(symdest(path.join(`build/${outputfolder}`)));
+                .pipe(symdest(path.join(`build/${outputfolder}`)))
+                .on('end', ok);
+    });
 };
 
 gulp.task('[private]:copy-ng2', () =>{
@@ -81,10 +85,11 @@ gulp.task('[private]:copy-deps', ()=>{
         .pipe(gulp.dest(config.dist.vendor));
 });
 
-gulp.task('[private]:build-all-apps', ()=>{
-    buildElectronAppFor('win32', 'win');
-    buildElectronAppFor('darwin', 'osx');
-    buildElectronAppFor('linux', 'linux');
+gulp.task('[private]:build-all-apps', (done)=>{
+    Promise.all([buildElectronAppFor('win32', 'win'),
+    buildElectronAppFor('darwin', 'osx'),
+    buildElectronAppFor('linux', 'linux')]).
+    then(()=>done());
 });
 gulp.task('[private]:copy-systemjsconfig', () =>{
     return gulp.src(config.sources.systemjsconfig)
@@ -129,10 +134,6 @@ gulp.task('[private]:build-html', () =>{
         .pipe(gulp.dest(config.dist.root));
 });
 
-gulp.task('[private]:after-build-cleanup', ()=>{
-    return del(config.dist.appFolder, {force:true});
-});
-
 gulp.task('default', (done)=>{
     return runSequence(
         'clean',
@@ -143,10 +144,10 @@ gulp.task('default', (done)=>{
             '[private]:copy-deps',
             '[private]:copy-rxjs',
             '[private]:copy-styles',
-            '[private]:copy-app-templates'],
+            '[private]:copy-app-templates'
+        ],
             '[private]:build-html',
             '[private]:generate-electron-output',
             '[private]:build-all-apps',
-            '[private]:after-build-cleanup'
         done);
 });

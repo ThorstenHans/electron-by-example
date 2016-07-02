@@ -1,1 +1,11 @@
-<h1>works</h1>
+<h1>Hello AngularCamp</h1>
+
+<div class="container">
+<div class="well info">In order to get Augury up and running, you've to install Augury in Chrome!</div>
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <input type='text' [(ngModel)]='content' class='form-control'/>
+        <notify [content]='content'></notify>
+    </div>
+</div>
+</div>
