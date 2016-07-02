@@ -4,9 +4,13 @@
   "description": "AngularCamp Barcelona 30 minute Electron talk",
   "main": "index.js",
   "scripts": {
-    "gulp" : "gulp"
+    "gulp": "gulp"
   },
-  "keywords": ["electron", "crossplatform", "angular2"],
+  "keywords": [
+    "electron",
+    "crossplatform",
+    "angular2"
+  ],
   "author": "Thorsten Hans <thorsten.hans@gmail.com> (http://www.xplatform.rocks/)",
   "license": "ISC",
   "devDependencies": {
